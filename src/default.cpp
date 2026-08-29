@@ -1,10 +1,22 @@
 // Platform Compatibility Layer.
 // "Platform Compatibility Layer For Raylib"
-
+// the main.cpp file handles backend, this is the frontend.
+// however, there is only stubs here (for now!)
+// TODO: Stubs should be written to call raylib functions
 #include "raylib.h"
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 using namespace std;
+// PCL Specific
+
+bool expectPCLVersion(const char *version) {
+  return version == "1.0.0";
+}
+
+const char* getPlatform() {
+  return "PCL 1.0.0-RLIB";
+}
 // Graphics Layer
 bool createWindow(int xSize, int ySize, const char *text) { // returns true if success
   InitWindow(xSize,ySize,text);
@@ -45,6 +57,15 @@ void clearBG(Color color) {
   ClearBackground(color);
   return;
 }
+void plotPixel(int posX, int posY, Color color) {
+  DrawPixel(posX, posY, color); // supposedly "Slow".
+  return;
+}
+
+void plotRect(int x, int y, int width, int height, Color color) {
+  DrawRectangle(x,y,width,height,color);
+  return;
+}
 float getDelta() {
   return GetFrameTime();
 }
@@ -53,13 +74,23 @@ float getDelta() {
 bool fsExists(const char *fileName) {
   return FileExists(fileName);
 }
+unsigned long fsSize(const char *fileName) {
+  return filesystem::file_size(fileName);
+}
 unsigned char fsByte(const char *fileName, int location) {
   fstream file(fileName, ios_base::binary);
   file.open(fileName);
+  if (!file.is_open()) {
+    cerr << "Error: Unable to open file!" << endl;
+    return 1;
+  }
   file.seekg(location);
-  unsigned char val = file.peek();
+  unsigned int val = file.peek();
+  if (val == 0xFFFFFFFF) { // this is an anomaly in the peek function (and presumably others) that happens when reading 0x1A (or EOF)
+    val = 0x1A;
+  }
   file.close();
-  return val;
+  return (unsigned char) val;
 }
 
 unsigned char* fsOpen(const char *fileName, unsigned int bytes, unsigned long offset) {
@@ -70,9 +101,8 @@ unsigned char* fsOpen(const char *fileName, unsigned int bytes, unsigned long of
   unsigned char* bytesVal = new unsigned char[bytes];
   unsigned int i = 0;
   file.read(temp, bytes);
-  while (i != bytes) {
+  for (;i < bytes; i++) {
     bytesVal[i] = (unsigned char)temp[i];
-    i++;
   }
   file.close();
   return bytesVal;
